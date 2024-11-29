@@ -1,17 +1,21 @@
 import jwt from "jsonwebtoken";
 
 const authenticateJWT = (req, res, next) => {
-  const token = req.header("Authorization")?.split(" ")[1]; // Haal het token uit de Authorization header
+  const token = req.header("Authorization")?.replace("Bearer ", "");
+  const secretKey = process.env.AUTH_SECRET_KEY;
 
   if (!token) {
-    return res.status(401).json({ message: "No token provided" });
+    return res.status(401).json({
+      message: "You cannot access this operation without a token!",
+    });
   }
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, secretKey, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ message: "Invalid token" });
+      return res.status(403).json({
+        message: "Invalid token provided!",
+      });
     }
-    req.user = user; // Voeg de gedecodeerde gebruikersinformatie toe aan de request
+    req.user = decoded;
     next();
   });
 };

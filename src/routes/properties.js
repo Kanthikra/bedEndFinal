@@ -10,22 +10,10 @@ const router = Router();
 
 router.get("/", async (req, res, next) => {
   try {
-    const { location, pricePerNight, amenities } = req.query;
-
-    const price = pricePerNight ? parseFloat(pricePerNight) : undefined;
-
-    const amenitiesArray = amenities ? amenities.split(",") : undefined;
-
-    const properties = await getProperties({
-      location,
-      pricePerNight: price,
-      amenities: amenitiesArray,
-    });
-
-    res.status(200).json(properties);
+    const properties = await getProperties();
+    res.json(properties);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 });
 
@@ -42,7 +30,6 @@ router.post("/", authenticateJWT, async (req, res, next) => {
       hostId,
       rating,
     } = req.body;
-
     const newProperty = await createProperty(
       title,
       description,
@@ -54,38 +41,22 @@ router.post("/", authenticateJWT, async (req, res, next) => {
       hostId,
       rating
     );
-
-    res.status(201).json({
-      message: "Property created successfully",
-      property: newProperty,
-    });
+    res.status(201).json(newProperty);
   } catch (error) {
     next(error);
   }
 });
 
-router.get("/:id", authenticateJWT, async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
   try {
-    const property = await getPropertyById(req.params.id);
+    const { id } = req.params;
+    const property = await getPropertyById(id);
+
     if (!property) {
-      return res.status(404).json({ message: "Property not found!" });
+      res.status(404).json({ message: `Property with id ${id} not found` });
+    } else {
+      res.status(200).json(property);
     }
-    res.status(200).json(property);
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.put("/:id", authenticateJWT, async (req, res, next) => {
-  try {
-    const updatedProperty = await updatePropertyById(req.params.id, req.body);
-    if (!updatedProperty) {
-      return res.status(404).json({ message: "Property not found!" });
-    }
-    res.status(200).json({
-      message: "Property updated successfully",
-      property: updatedProperty,
-    });
   } catch (error) {
     next(error);
   }
@@ -93,11 +64,59 @@ router.put("/:id", authenticateJWT, async (req, res, next) => {
 
 router.delete("/:id", authenticateJWT, async (req, res, next) => {
   try {
-    const deletedProperty = await deletePropertyById(req.params.id);
-    if (!deletedProperty) {
-      return res.status(404).json({ message: "Property not found!" });
+    const { id } = req.params;
+    const property = await deletePropertyById(id);
+
+    if (property) {
+      res.status(200).send({
+        message: `Property with id ${id} successfully deleted`,
+        user,
+      });
+    } else {
+      res.status(404).json({
+        message: `Property with id ${id} not found`,
+      });
     }
-    res.status(200).json({ message: "Property deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/:id", authenticateJWT, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      title,
+      description,
+      location,
+      pricePerNight,
+      bedroomCount,
+      bathRoomCount,
+      maxGuestCount,
+      hostId,
+      rating,
+    } = req.body;
+    const property = await updatePropertyById(id, {
+      title,
+      description,
+      location,
+      pricePerNight,
+      bedroomCount,
+      bathRoomCount,
+      maxGuestCount,
+      hostId,
+      rating,
+    });
+
+    if (property) {
+      res.status(200).send({
+        message: `Property with id ${id} successfully updated`,
+      });
+    } else {
+      res.status(404).json({
+        message: `Property with id ${id} not found`,
+      });
+    }
   } catch (error) {
     next(error);
   }

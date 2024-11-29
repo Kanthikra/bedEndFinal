@@ -6,26 +6,37 @@ import process from "process";
 const prisma = new PrismaClient();
 
 const login = async (username, password) => {
-  const secretKey =
-    process.env.AUTH_SECRET_KEY ||
-    "Vwq991L6LRFO2hBjcSwHniv2+yXlYD6xx+NAwGHFRqT1BB7y1ysPqiaZbCs=";
-  const user = await prisma.user.findFirst({
-    where: { username },
-  });
+  try {
+    const secretKey = process.env.AUTH_SECRET_KEY;
+    if (!secretKey) {
+      console.error("AUTH_SECRET_KEY is not defined.");
+      throw new Error(
+        "AUTH_SECRET_KEY is not defined in environment variables."
+      );
+    }
 
-  if (!user) {
-    return null;
+    const user = await prisma.user.findFirst({
+      where: { username },
+    });
+
+    if (!user) {
+      console.log("User not found:", username);
+      return { error: "Invalid username or password" };
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      console.log("Password mismatch for user:", username);
+      return { error: "Invalid username or password" };
+    }
+
+    const token = jwt.sign({ userId: user.id }, secretKey, { expiresIn: "1h" });
+    console.log("Token generated successfully:", token);
+    return { token };
+  } catch (error) {
+    console.error("Error during login:", error);
+    return { error: "Something went wrong, please try again later." };
   }
-
-  const isPasswordValid = await bcrypt.compare(password, user.password);
-
-  if (!isPasswordValid) {
-    return null;
-  }
-
-  const token = jwt.sign({ userId: user.id }, secretKey, { expiresIn: "1h" });
-
-  return token;
 };
 
 export default login;
