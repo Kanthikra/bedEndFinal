@@ -1,0 +1,13 @@
+import { PrismaClient } from "@prisma/client";
+
+const updatePropertyById = async (id, updatedProperty) => {
+  const prisma = new PrismaClient();
+  const property = await prisma.property.update({
+    where: { id },
+    data: updatedProperty,
+  });
+
+  return property ? id : null;
+};
+
+export default updatePropertyById;
